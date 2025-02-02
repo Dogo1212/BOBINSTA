@@ -1,1 +1,93 @@
---This its the script disfrute the script 
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+if game:GetService("BadgeService"):UserHasBadgeAsync(game.Players.LocalPlayer.UserId, 2125950512) then
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Nice!",
+        Text = "Congratulations, you got Bob ;)",
+        Duration = 1000,
+        Icon = "rbxthumb://type=Asset&id=9649923610&w=150&h=150",
+        Button1 = "OK"
+    })
+    fireclickdetector(game:GetService("Workspace").Lobby.bob.ClickDetector)
+    return
+end
+
+fireclickdetector(game:GetService("Workspace").Lobby.Replica.ClickDetector)
+wait(1)
+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = workspace.Lobby.Teleport1.CFrame
+task.wait(1)
+
+for i = 1, 75000 do
+    game:GetService("ReplicatedStorage").Duplicate:FireServer(unpack({[1] = true}))
+end
+
+wait(60)
+
+local AllIDs = {}
+local foundAnything = ""
+local actualHour = os.date("!*t").hour
+local S_T = game:GetService("TeleportService")
+local S_H = game:GetService("HttpService")
+local Players = game:GetService("Players")
+
+local File = pcall(function()
+    AllIDs = S_H:JSONDecode(readfile("server-hop-temp.json"))
+end)
+
+if not File then
+    table.insert(AllIDs, actualHour)
+    pcall(function()
+        writefile("server-hop-temp.json", S_H:JSONEncode(AllIDs))
+    end)
+end
+
+local function TPReturner(placeId)
+    local Site
+    if foundAnything == "" then
+        Site = S_H:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. placeId .. '/servers/Public?sortOrder=Asc&limit=100'))
+    else
+        Site = S_H:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. placeId .. '/servers/Public?sortOrder=Asc&limit=100&cursor=' .. foundAnything))
+    end
+
+    local ID = ""
+    local foundServer = false 
+
+    for _, v in pairs(Site.data) do
+        local Possible = true
+        ID = tostring(v.id)
+        if tonumber(v.maxPlayers) > tonumber(v.playing) then
+            for _, Existing in pairs(AllIDs) do
+                if ID == tostring(Existing) then
+                    Possible = false
+                end
+            end
+            if Possible then
+                table.insert(AllIDs, ID)
+                pcall(function()
+                    writefile("server-hop-temp.json", S_H:JSONEncode(AllIDs))
+                    S_T:TeleportToPlaceInstance(placeId, ID, Players.LocalPlayer)
+                end)
+                wait(4)
+                foundServer = true
+                break
+            end
+        end
+    end
+
+    if not foundServer then
+        game:GetService("TeleportService"):Teleport(game.PlaceId)
+    end
+end
+
+local module = {}
+function module:Teleport(placeId)
+    while wait() do
+        pcall(function()
+            TPReturner(placeId)
+        end)
+    end
+end
+
+module:Teleport(game.PlaceId)
